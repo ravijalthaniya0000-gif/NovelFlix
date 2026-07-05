@@ -1,4 +1,3 @@
-L
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -26,7 +25,7 @@ L
     overflow:hidden;
   }
   .app{ display:flex; height:100vh; }
- 
+
   /* Sidebar */
   .sidebar{
     width:260px;
@@ -71,7 +70,7 @@ L
     color:var(--parchment);
     background:var(--ink-3);
   }
- 
+
   /* Main area */
   .main{ flex:1; display:flex; flex-direction:column; overflow:hidden; }
   .tabs{
@@ -98,7 +97,7 @@ L
     margin-top:40px;
     text-align:center;
   }
- 
+
   /* Chapters */
   .chapter-layout{ display:flex; gap:24px; height:100%; }
   .chapter-col{ width:200px; border-right:1px solid var(--border); padding-right:16px; }
@@ -142,7 +141,7 @@ L
     margin-top:8px;
     height:16px;
   }
- 
+
   /* Characters */
   .char-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
   .char-card{
@@ -151,8 +150,12 @@ L
     padding:14px;
   }
   .char-card h4{ margin:0 0 6px 0; color:var(--brass); font-size:16px; }
-  .char-card p{ margin:0; font-size:13px; color:var(--parchment-dim); line-height:1.5; }
- 
+  .char-card p{ margin:0 0 10px 0; font-size:13px; color:var(--parchment-dim); line-height:1.5; }
+  .char-card-actions{ display:flex; gap:6px; }
+  .char-card-actions .btn.small{ padding:4px 8px; font-size:11px; }
+  .btn.danger{ border-color:var(--danger); color:var(--danger); }
+  .btn.danger:hover{ background:var(--danger); color:var(--ink); }
+
   /* Forms */
   .form-row{ margin-bottom:12px; }
   .form-row label{ display:block; font-size:12px; color:var(--parchment-dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px; }
@@ -166,7 +169,7 @@ L
     font-size:14px;
   }
   .form-row textarea{ min-height:70px; resize:vertical; }
- 
+
   /* Tooltip for character names in editor preview */
   .char-highlight{
     color:var(--brass);
@@ -189,13 +192,13 @@ L
     box-shadow:0 4px 12px rgba(0,0,0,0.5);
   }
   .char-highlight:hover .char-tooltip{ display:block; }
- 
+
   .toggle-row{ display:flex; gap:8px; margin-bottom:12px; }
   .toggle-row .btn.small{ padding:5px 10px; font-size:12px; }
- 
+
   ::-webkit-scrollbar{ width:8px; }
   ::-webkit-scrollbar-thumb{ background:var(--border); }
- 
+
   /* Modal */
   .modal-overlay{
     display:none;
@@ -228,20 +231,20 @@ L
 </style>
 </head>
 <body>
- 
+
 <div class="app">
   <div class="sidebar">
     <div class="brand">NovelFlix</div>
     <button class="btn" onclick="createNovel()">+ New Novel</button>
     <div class="novel-list" id="novelList"></div>
   </div>
- 
+
   <div class="main">
     <div class="tabs" id="tabs" style="display:none;">
       <div class="tab active" data-tab="chapters" onclick="switchTab('chapters')">Chapters</div>
       <div class="tab" data-tab="characters" onclick="switchTab('characters')">Characters</div>
     </div>
- 
+
     <div class="panel active" id="panel-chapters">
       <div class="empty-state" id="noNovelMsg">Create or select a novel to begin.</div>
       <div class="chapter-layout" id="chapterLayout" style="display:none;">
@@ -261,25 +264,30 @@ L
         </div>
       </div>
     </div>
- 
+
     <div class="panel" id="panel-characters">
-      <button class="btn" onclick="showCharForm()">+ New Character</button>
-      <div id="charForm" style="display:none; margin-top:16px; max-width:400px;">
-        <div class="form-row">
-          <label>Name</label>
-          <input type="text" id="charName">
+      <div class="empty-state" id="noNovelCharMsg" style="display:none;">Create or select a novel first.</div>
+      <div id="charSection">
+        <button class="btn" onclick="showCharForm()">+ New Character</button>
+        <div id="charForm" style="display:none; margin-top:16px; max-width:400px;">
+          <input type="hidden" id="charEditId">
+          <div class="form-row">
+            <label>Name</label>
+            <input type="text" id="charName">
+          </div>
+          <div class="form-row">
+            <label>Bio / Description</label>
+            <textarea id="charBio"></textarea>
+          </div>
+          <button class="btn" onclick="saveCharacter()">Save Character</button>
+          <button class="btn" onclick="cancelCharForm()">Cancel</button>
         </div>
-        <div class="form-row">
-          <label>Bio / Description</label>
-          <textarea id="charBio"></textarea>
-        </div>
-        <button class="btn" onclick="saveCharacter()">Save Character</button>
+        <div class="char-grid" id="charGrid" style="margin-top:20px;"></div>
       </div>
-      <div class="char-grid" id="charGrid" style="margin-top:20px;"></div>
     </div>
   </div>
 </div>
- 
+
 <div class="modal-overlay" id="novelModal">
   <div class="modal-box">
     <h3>New Novel</h3>
@@ -290,7 +298,7 @@ L
     </div>
   </div>
 </div>
- 
+
 <div class="modal-overlay" id="chapterModal">
   <div class="modal-box">
     <h3>New Chapter</h3>
@@ -301,11 +309,11 @@ L
     </div>
   </div>
 </div>
- 
+
 <script>
 /* ---------- Data layer (localStorage) ---------- */
 const DB_KEY = 'novelflix_data_v1';
- 
+
 function loadDB(){
   const raw = localStorage.getItem(DB_KEY);
   if(!raw) return { novels: [] };
@@ -314,23 +322,23 @@ function loadDB(){
 function saveDB(db){
   localStorage.setItem(DB_KEY, JSON.stringify(db));
 }
- 
+
 let db = loadDB();
 let activeNovelId = null;
 let activeChapterId = null;
 let editMode = true;
- 
+
 /* ---------- Novels ---------- */
 function createNovel(){
   document.getElementById('novelNameInput').value = '';
   document.getElementById('novelModal').classList.add('active');
   document.getElementById('novelNameInput').focus();
 }
- 
+
 function closeNovelModal(){
   document.getElementById('novelModal').classList.remove('active');
 }
- 
+
 function confirmCreateNovel(){
   const title = document.getElementById('novelNameInput').value.trim();
   if(!title) return;
@@ -346,7 +354,7 @@ function confirmCreateNovel(){
   renderNovelList();
   selectNovel(novel.id);
 }
- 
+
 function renderNovelList(){
   const listEl = document.getElementById('novelList');
   listEl.innerHTML = '';
@@ -358,23 +366,25 @@ function renderNovelList(){
     listEl.appendChild(div);
   });
 }
- 
+
 function selectNovel(id){
   activeNovelId = id;
   activeChapterId = null;
   document.getElementById('tabs').style.display = 'flex';
   document.getElementById('noNovelMsg').style.display = 'none';
   document.getElementById('chapterLayout').style.display = 'flex';
+  document.getElementById('noNovelCharMsg').style.display = 'none';
+  document.getElementById('charSection').style.display = 'block';
   renderNovelList();
   renderChapterList();
   renderCharacters();
   clearEditor();
 }
- 
+
 function getActiveNovel(){
   return db.novels.find(n => n.id === activeNovelId);
 }
- 
+
 /* ---------- Chapters ---------- */
 function createChapter(){
   const novel = getActiveNovel();
@@ -383,11 +393,11 @@ function createChapter(){
   document.getElementById('chapterModal').classList.add('active');
   document.getElementById('chapterNameInput').focus();
 }
- 
+
 function closeChapterModal(){
   document.getElementById('chapterModal').classList.remove('active');
 }
- 
+
 function confirmCreateChapter(){
   const novel = getActiveNovel();
   if(!novel) return;
@@ -404,7 +414,7 @@ function confirmCreateChapter(){
   renderChapterList();
   selectChapter(chapter.id);
 }
- 
+
 function renderChapterList(){
   const novel = getActiveNovel();
   const listEl = document.getElementById('chapterList');
@@ -418,7 +428,7 @@ function renderChapterList(){
     listEl.appendChild(div);
   });
 }
- 
+
 function selectChapter(id){
   activeChapterId = id;
   const novel = getActiveNovel();
@@ -428,13 +438,13 @@ function selectChapter(id){
   renderChapterList();
   renderPreview();
 }
- 
+
 function clearEditor(){
   document.getElementById('chapterTitle').value = '';
   document.getElementById('chapterBody').value = '';
   document.getElementById('chapterPreview').innerHTML = '';
 }
- 
+
 let saveTimeout = null;
 function onEdit(){
   const novel = getActiveNovel();
@@ -442,7 +452,7 @@ function onEdit(){
   const chapter = novel.chapters.find(c => c.id === activeChapterId);
   chapter.title = document.getElementById('chapterTitle').value;
   chapter.body = document.getElementById('chapterBody').value;
- 
+
   document.getElementById('saveStatus').textContent = 'Saving...';
   clearTimeout(saveTimeout);
   saveTimeout = setTimeout(() => {
@@ -452,23 +462,23 @@ function onEdit(){
     setTimeout(() => { document.getElementById('saveStatus').textContent = ''; }, 1500);
   }, 500);
 }
- 
+
 function setEditMode(isEdit){
   editMode = isEdit;
   document.getElementById('chapterBody').style.display = isEdit ? 'block' : 'none';
   document.getElementById('chapterPreview').style.display = isEdit ? 'none' : 'block';
   if(!isEdit) renderPreview();
 }
- 
+
 function renderPreview(){
   const novel = getActiveNovel();
   if(!novel || !activeChapterId) return;
   const chapter = novel.chapters.find(c => c.id === activeChapterId);
   let text = chapter.body || '';
- 
+
   // Escape HTML first
   text = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
- 
+
   // Highlight character names with tooltip
   novel.characters.forEach(ch => {
     if(!ch.name) return;
@@ -480,29 +490,60 @@ function renderPreview(){
              '<span class="char-tooltip"><strong>' + ch.name + '</strong><br>' + bio + '</span></span>';
     });
   });
- 
+
   document.getElementById('chapterPreview').innerHTML = text.replace(/\n/g, '<br>');
 }
- 
+
 /* ---------- Characters ---------- */
 function showCharForm(){
+  document.getElementById('charEditId').value = '';
+  document.getElementById('charName').value = '';
+  document.getElementById('charBio').value = '';
   document.getElementById('charForm').style.display = 'block';
 }
- 
+
+function cancelCharForm(){
+  document.getElementById('charForm').style.display = 'none';
+}
+
+function editCharacter(id){
+  const novel = getActiveNovel();
+  const ch = novel.characters.find(c => c.id === id);
+  if(!ch) return;
+  document.getElementById('charEditId').value = ch.id;
+  document.getElementById('charName').value = ch.name;
+  document.getElementById('charBio').value = ch.bio;
+  document.getElementById('charForm').style.display = 'block';
+}
+
+function deleteCharacter(id){
+  const novel = getActiveNovel();
+  if(!confirm('Delete this character?')) return;
+  novel.characters = novel.characters.filter(c => c.id !== id);
+  saveDB(db);
+  renderCharacters();
+}
+
 function saveCharacter(){
   const novel = getActiveNovel();
   if(!novel) return;
+  const editId = document.getElementById('charEditId').value;
   const name = document.getElementById('charName').value.trim();
   const bio = document.getElementById('charBio').value.trim();
   if(!name) return;
-  novel.characters.push({ id: 'ch' + Date.now(), name, bio });
+
+  if(editId){
+    const ch = novel.characters.find(c => c.id === editId);
+    ch.name = name;
+    ch.bio = bio;
+  } else {
+    novel.characters.push({ id: 'ch' + Date.now(), name, bio });
+  }
   saveDB(db);
-  document.getElementById('charName').value = '';
-  document.getElementById('charBio').value = '';
   document.getElementById('charForm').style.display = 'none';
   renderCharacters();
 }
- 
+
 function renderCharacters(){
   const novel = getActiveNovel();
   const grid = document.getElementById('charGrid');
@@ -511,27 +552,37 @@ function renderCharacters(){
   novel.characters.forEach(ch => {
     const card = document.createElement('div');
     card.className = 'char-card';
-    card.innerHTML = '<h4>' + ch.name + '</h4><p>' + (ch.bio || 'No description yet.') + '</p>';
+    const safeName = ch.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const safeBio = (ch.bio || 'No description yet.').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    card.innerHTML = '<h4>' + safeName + '</h4><p>' + safeBio + '</p>' +
+      '<div class="char-card-actions">' +
+      '<button class="btn small" onclick="editCharacter(\'' + ch.id + '\')">Edit</button>' +
+      '<button class="btn small danger" onclick="deleteCharacter(\'' + ch.id + '\')">Delete</button>' +
+      '</div>';
     grid.appendChild(card);
   });
 }
- 
+
 /* ---------- Tabs ---------- */
 function switchTab(tab){
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelector('[data-tab="' + tab + '"]').classList.add('active');
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + tab).classList.add('active');
-  if(tab === 'characters') renderCharacters();
+  if(tab === 'characters'){
+    const hasNovel = !!getActiveNovel();
+    document.getElementById('noNovelCharMsg').style.display = hasNovel ? 'none' : 'block';
+    document.getElementById('charSection').style.display = hasNovel ? 'block' : 'none';
+    if(hasNovel) renderCharacters();
+  }
 }
- 
+
 /* ---------- Init ---------- */
 renderNovelList();
 if(db.novels.length > 0){
   selectNovel(db.novels[0].id);
 }
 </script>
- 
+
 </body>
 </html>
- 
