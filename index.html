@@ -1,3 +1,4 @@
+L
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -194,6 +195,36 @@
  
   ::-webkit-scrollbar{ width:8px; }
   ::-webkit-scrollbar-thumb{ background:var(--border); }
+ 
+  /* Modal */
+  .modal-overlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.6);
+    z-index:100;
+    align-items:center;
+    justify-content:center;
+  }
+  .modal-overlay.active{ display:flex; }
+  .modal-box{
+    background:var(--ink-2);
+    border:1px solid var(--brass-dim);
+    padding:24px;
+    width:320px;
+  }
+  .modal-box h3{ margin:0 0 16px 0; color:var(--brass); font-size:16px; font-weight:normal; text-transform:uppercase; letter-spacing:1px; }
+  .modal-box input{
+    width:100%;
+    background:var(--ink-3);
+    border:1px solid var(--border);
+    color:var(--parchment);
+    font-family:inherit;
+    padding:10px;
+    font-size:15px;
+    margin-bottom:16px;
+  }
+  .modal-box input:focus{ outline:none; border-color:var(--brass); }
+  .modal-actions{ display:flex; gap:8px; justify-content:flex-end; }
 </style>
 </head>
 <body>
@@ -249,6 +280,28 @@
   </div>
 </div>
  
+<div class="modal-overlay" id="novelModal">
+  <div class="modal-box">
+    <h3>New Novel</h3>
+    <input type="text" id="novelNameInput" placeholder="Novel title" onkeydown="if(event.key==='Enter') confirmCreateNovel()">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeNovelModal()">Cancel</button>
+      <button class="btn" onclick="confirmCreateNovel()">Create</button>
+    </div>
+  </div>
+</div>
+ 
+<div class="modal-overlay" id="chapterModal">
+  <div class="modal-box">
+    <h3>New Chapter</h3>
+    <input type="text" id="chapterNameInput" placeholder="Chapter title" onkeydown="if(event.key==='Enter') confirmCreateChapter()">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeChapterModal()">Cancel</button>
+      <button class="btn" onclick="confirmCreateChapter()">Create</button>
+    </div>
+  </div>
+</div>
+ 
 <script>
 /* ---------- Data layer (localStorage) ---------- */
 const DB_KEY = 'novelflix_data_v1';
@@ -269,7 +322,17 @@ let editMode = true;
  
 /* ---------- Novels ---------- */
 function createNovel(){
-  const title = prompt('Novel title:');
+  document.getElementById('novelNameInput').value = '';
+  document.getElementById('novelModal').classList.add('active');
+  document.getElementById('novelNameInput').focus();
+}
+ 
+function closeNovelModal(){
+  document.getElementById('novelModal').classList.remove('active');
+}
+ 
+function confirmCreateNovel(){
+  const title = document.getElementById('novelNameInput').value.trim();
   if(!title) return;
   const novel = {
     id: 'n' + Date.now(),
@@ -279,6 +342,7 @@ function createNovel(){
   };
   db.novels.push(novel);
   saveDB(db);
+  closeNovelModal();
   renderNovelList();
   selectNovel(novel.id);
 }
@@ -315,13 +379,28 @@ function getActiveNovel(){
 function createChapter(){
   const novel = getActiveNovel();
   if(!novel) return;
+  document.getElementById('chapterNameInput').value = '';
+  document.getElementById('chapterModal').classList.add('active');
+  document.getElementById('chapterNameInput').focus();
+}
+ 
+function closeChapterModal(){
+  document.getElementById('chapterModal').classList.remove('active');
+}
+ 
+function confirmCreateChapter(){
+  const novel = getActiveNovel();
+  if(!novel) return;
+  const title = document.getElementById('chapterNameInput').value.trim();
+  if(!title) return;
   const chapter = {
     id: 'c' + Date.now(),
-    title: 'Untitled Chapter',
+    title: title,
     body: ''
   };
   novel.chapters.push(chapter);
   saveDB(db);
+  closeChapterModal();
   renderChapterList();
   selectChapter(chapter.id);
 }
@@ -455,3 +534,4 @@ if(db.novels.length > 0){
  
 </body>
 </html>
+ 
