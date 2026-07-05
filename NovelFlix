@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>NovelFlix — Writer Studio</title>
+<style>
+  :root{
+    --ink: #14110f;
+    --ink-2: #1c1815;
+    --ink-3: #262019;
+    --parchment: #e8dfc8;
+    --parchment-dim: #a89f88;
+    --brass: #c9a24b;
+    --brass-dim: #7d6b3c;
+    --danger: #a85b4b;
+    --border: #3a3227;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family: Georgia, 'Times New Roman', serif;
+    background: var(--ink);
+    color: var(--parchment);
+    height:100vh;
+    overflow:hidden;
+  }
+  .app{ display:flex; height:100vh; }
+ 
+  /* Sidebar */
+  .sidebar{
+    width:260px;
+    background: var(--ink-2);
+    border-right: 1px solid var(--border);
+    display:flex;
+    flex-direction:column;
+    padding:20px 16px;
+  }
+  .brand{
+    font-size:20px;
+    letter-spacing:2px;
+    color:var(--brass);
+    margin-bottom:24px;
+    text-transform:uppercase;
+    font-weight:bold;
+  }
+  .btn{
+    background:transparent;
+    border:1px solid var(--brass-dim);
+    color:var(--brass);
+    padding:8px 12px;
+    font-family:inherit;
+    cursor:pointer;
+    font-size:13px;
+    letter-spacing:0.5px;
+    transition:0.15s;
+  }
+  .btn:hover{ background:var(--brass); color:var(--ink); }
+  .novel-list{ margin-top:16px; flex:1; overflow-y:auto; }
+  .novel-item{
+    padding:10px 10px;
+    margin-bottom:4px;
+    cursor:pointer;
+    border-left:2px solid transparent;
+    color:var(--parchment-dim);
+    font-size:14px;
+  }
+  .novel-item:hover{ background:var(--ink-3); }
+  .novel-item.active{
+    border-left:2px solid var(--brass);
+    color:var(--parchment);
+    background:var(--ink-3);
+  }
+ 
+  /* Main area */
+  .main{ flex:1; display:flex; flex-direction:column; overflow:hidden; }
+  .tabs{
+    display:flex;
+    border-bottom:1px solid var(--border);
+    background:var(--ink-2);
+  }
+  .tab{
+    padding:14px 22px;
+    cursor:pointer;
+    color:var(--parchment-dim);
+    font-size:14px;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    border-bottom:2px solid transparent;
+  }
+  .tab:hover{ color:var(--parchment); }
+  .tab.active{ color:var(--brass); border-bottom:2px solid var(--brass); }
+  .panel{ flex:1; overflow-y:auto; padding:24px 32px; display:none; }
+  .panel.active{ display:block; }
+  .empty-state{
+    color:var(--parchment-dim);
+    font-style:italic;
+    margin-top:40px;
+    text-align:center;
+  }
+ 
+  /* Chapters */
+  .chapter-layout{ display:flex; gap:24px; height:100%; }
+  .chapter-col{ width:200px; border-right:1px solid var(--border); padding-right:16px; }
+  .chapter-item{
+    padding:8px;
+    cursor:pointer;
+    color:var(--parchment-dim);
+    font-size:14px;
+    border-left:2px solid transparent;
+  }
+  .chapter-item:hover{ background:var(--ink-3); }
+  .chapter-item.active{ border-left:2px solid var(--brass); color:var(--parchment); }
+  .editor-col{ flex:1; display:flex; flex-direction:column; }
+  .editor-title{
+    background:transparent;
+    border:none;
+    border-bottom:1px solid var(--border);
+    color:var(--parchment);
+    font-size:22px;
+    font-family:inherit;
+    padding:8px 0;
+    margin-bottom:12px;
+    width:100%;
+  }
+  .editor-title:focus{ outline:none; border-bottom-color:var(--brass); }
+  .editor-body{
+    flex:1;
+    background:var(--ink-2);
+    border:1px solid var(--border);
+    color:var(--parchment);
+    font-family:inherit;
+    font-size:16px;
+    line-height:1.7;
+    padding:20px;
+    resize:none;
+  }
+  .editor-body:focus{ outline:none; border-color:var(--brass-dim); }
+  .save-status{
+    font-size:12px;
+    color:var(--parchment-dim);
+    margin-top:8px;
+    height:16px;
+  }
+ 
+  /* Characters */
+  .char-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; }
+  .char-card{
+    background:var(--ink-2);
+    border:1px solid var(--border);
+    padding:14px;
+  }
+  .char-card h4{ margin:0 0 6px 0; color:var(--brass); font-size:16px; }
+  .char-card p{ margin:0; font-size:13px; color:var(--parchment-dim); line-height:1.5; }
+ 
+  /* Forms */
+  .form-row{ margin-bottom:12px; }
+  .form-row label{ display:block; font-size:12px; color:var(--parchment-dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px; }
+  .form-row input, .form-row textarea{
+    width:100%;
+    background:var(--ink-3);
+    border:1px solid var(--border);
+    color:var(--parchment);
+    font-family:inherit;
+    padding:8px;
+    font-size:14px;
+  }
+  .form-row textarea{ min-height:70px; resize:vertical; }
+ 
+  /* Tooltip for character names in editor preview */
+  .char-highlight{
+    color:var(--brass);
+    border-bottom:1px dotted var(--brass-dim);
+    cursor:help;
+    position:relative;
+  }
+  .char-tooltip{
+    display:none;
+    position:absolute;
+    bottom:120%;
+    left:0;
+    background:var(--ink-3);
+    border:1px solid var(--brass-dim);
+    padding:10px;
+    width:220px;
+    font-size:13px;
+    color:var(--parchment);
+    z-index:10;
+    box-shadow:0 4px 12px rgba(0,0,0,0.5);
+  }
+  .char-highlight:hover .char-tooltip{ display:block; }
+ 
+  .toggle-row{ display:flex; gap:8px; margin-bottom:12px; }
+  .toggle-row .btn.small{ padding:5px 10px; font-size:12px; }
+ 
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--border); }
+</style>
+</head>
+<body>
+ 
+<div class="app">
+  <div class="sidebar">
+    <div class="brand">NovelFlix</div>
+    <button class="btn" onclick="createNovel()">+ New Novel</button>
+    <div class="novel-list" id="novelList"></div>
+  </div>
+ 
+  <div class="main">
+    <div class="tabs" id="tabs" style="display:none;">
+      <div class="tab active" data-tab="chapters" onclick="switchTab('chapters')">Chapters</div>
+      <div class="tab" data-tab="characters" onclick="switchTab('characters')">Characters</div>
+    </div>
+ 
+    <div class="panel active" id="panel-chapters">
+      <div class="empty-state" id="noNovelMsg">Create or select a novel to begin.</div>
+      <div class="chapter-layout" id="chapterLayout" style="display:none;">
+        <div class="chapter-col">
+          <button class="btn" style="width:100%;margin-bottom:12px;" onclick="createChapter()">+ New Chapter</button>
+          <div id="chapterList"></div>
+        </div>
+        <div class="editor-col">
+          <input type="text" class="editor-title" id="chapterTitle" placeholder="Chapter title" oninput="onEdit()">
+          <div class="toggle-row">
+            <button class="btn small" onclick="setEditMode(true)">Edit</button>
+            <button class="btn small" onclick="setEditMode(false)">Preview (character hover)</button>
+          </div>
+          <textarea class="editor-body" id="chapterBody" placeholder="Start writing..." oninput="onEdit()"></textarea>
+          <div class="editor-body" id="chapterPreview" style="display:none; overflow-y:auto;"></div>
+          <div class="save-status" id="saveStatus"></div>
+        </div>
+      </div>
+    </div>
+ 
+    <div class="panel" id="panel-characters">
+      <button class="btn" onclick="showCharForm()">+ New Character</button>
+      <div id="charForm" style="display:none; margin-top:16px; max-width:400px;">
+        <div class="form-row">
+          <label>Name</label>
+          <input type="text" id="charName">
+        </div>
+        <div class="form-row">
+          <label>Bio / Description</label>
+          <textarea id="charBio"></textarea>
+        </div>
+        <button class="btn" onclick="saveCharacter()">Save Character</button>
+      </div>
+      <div class="char-grid" id="charGrid" style="margin-top:20px;"></div>
+    </div>
+  </div>
+</div>
+ 
+<script>
+/* ---------- Data layer (localStorage) ---------- */
+const DB_KEY = 'novelflix_data_v1';
+ 
+function loadDB(){
+  const raw = localStorage.getItem(DB_KEY);
+  if(!raw) return { novels: [] };
+  return JSON.parse(raw);
+}
+function saveDB(db){
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+}
+ 
+let db = loadDB();
+let activeNovelId = null;
+let activeChapterId = null;
+let editMode = true;
+ 
+/* ---------- Novels ---------- */
+function createNovel(){
+  const title = prompt('Novel title:');
+  if(!title) return;
+  const novel = {
+    id: 'n' + Date.now(),
+    title: title,
+    chapters: [],
+    characters: []
+  };
+  db.novels.push(novel);
+  saveDB(db);
+  renderNovelList();
+  selectNovel(novel.id);
+}
+ 
+function renderNovelList(){
+  const listEl = document.getElementById('novelList');
+  listEl.innerHTML = '';
+  db.novels.forEach(n => {
+    const div = document.createElement('div');
+    div.className = 'novel-item' + (n.id === activeNovelId ? ' active' : '');
+    div.textContent = n.title;
+    div.onclick = () => selectNovel(n.id);
+    listEl.appendChild(div);
+  });
+}
+ 
+function selectNovel(id){
+  activeNovelId = id;
+  activeChapterId = null;
+  document.getElementById('tabs').style.display = 'flex';
+  document.getElementById('noNovelMsg').style.display = 'none';
+  document.getElementById('chapterLayout').style.display = 'flex';
+  renderNovelList();
+  renderChapterList();
+  renderCharacters();
+  clearEditor();
+}
+ 
+function getActiveNovel(){
+  return db.novels.find(n => n.id === activeNovelId);
+}
+ 
+/* ---------- Chapters ---------- */
+function createChapter(){
+  const novel = getActiveNovel();
+  if(!novel) return;
+  const chapter = {
+    id: 'c' + Date.now(),
+    title: 'Untitled Chapter',
+    body: ''
+  };
+  novel.chapters.push(chapter);
+  saveDB(db);
+  renderChapterList();
+  selectChapter(chapter.id);
+}
+ 
+function renderChapterList(){
+  const novel = getActiveNovel();
+  const listEl = document.getElementById('chapterList');
+  listEl.innerHTML = '';
+  if(!novel) return;
+  novel.chapters.forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'chapter-item' + (c.id === activeChapterId ? ' active' : '');
+    div.textContent = c.title || 'Untitled';
+    div.onclick = () => selectChapter(c.id);
+    listEl.appendChild(div);
+  });
+}
+ 
+function selectChapter(id){
+  activeChapterId = id;
+  const novel = getActiveNovel();
+  const chapter = novel.chapters.find(c => c.id === id);
+  document.getElementById('chapterTitle').value = chapter.title;
+  document.getElementById('chapterBody').value = chapter.body;
+  renderChapterList();
+  renderPreview();
+}
+ 
+function clearEditor(){
+  document.getElementById('chapterTitle').value = '';
+  document.getElementById('chapterBody').value = '';
+  document.getElementById('chapterPreview').innerHTML = '';
+}
+ 
+let saveTimeout = null;
+function onEdit(){
+  const novel = getActiveNovel();
+  if(!novel || !activeChapterId) return;
+  const chapter = novel.chapters.find(c => c.id === activeChapterId);
+  chapter.title = document.getElementById('chapterTitle').value;
+  chapter.body = document.getElementById('chapterBody').value;
+ 
+  document.getElementById('saveStatus').textContent = 'Saving...';
+  clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(() => {
+    saveDB(db);
+    renderChapterList();
+    document.getElementById('saveStatus').textContent = 'Saved';
+    setTimeout(() => { document.getElementById('saveStatus').textContent = ''; }, 1500);
+  }, 500);
+}
+ 
+function setEditMode(isEdit){
+  editMode = isEdit;
+  document.getElementById('chapterBody').style.display = isEdit ? 'block' : 'none';
+  document.getElementById('chapterPreview').style.display = isEdit ? 'none' : 'block';
+  if(!isEdit) renderPreview();
+}
+ 
+function renderPreview(){
+  const novel = getActiveNovel();
+  if(!novel || !activeChapterId) return;
+  const chapter = novel.chapters.find(c => c.id === activeChapterId);
+  let text = chapter.body || '';
+ 
+  // Escape HTML first
+  text = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+ 
+  // Highlight character names with tooltip
+  novel.characters.forEach(ch => {
+    if(!ch.name) return;
+    const escapedName = ch.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp('\\b(' + escapedName + ')\\b', 'gi');
+    text = text.replace(regex, (match) => {
+      const bio = (ch.bio || 'No description yet.').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      return '<span class="char-highlight">' + match +
+             '<span class="char-tooltip"><strong>' + ch.name + '</strong><br>' + bio + '</span></span>';
+    });
+  });
+ 
+  document.getElementById('chapterPreview').innerHTML = text.replace(/\n/g, '<br>');
+}
+ 
+/* ---------- Characters ---------- */
+function showCharForm(){
+  document.getElementById('charForm').style.display = 'block';
+}
+ 
+function saveCharacter(){
+  const novel = getActiveNovel();
+  if(!novel) return;
+  const name = document.getElementById('charName').value.trim();
+  const bio = document.getElementById('charBio').value.trim();
+  if(!name) return;
+  novel.characters.push({ id: 'ch' + Date.now(), name, bio });
+  saveDB(db);
+  document.getElementById('charName').value = '';
+  document.getElementById('charBio').value = '';
+  document.getElementById('charForm').style.display = 'none';
+  renderCharacters();
+}
+ 
+function renderCharacters(){
+  const novel = getActiveNovel();
+  const grid = document.getElementById('charGrid');
+  grid.innerHTML = '';
+  if(!novel) return;
+  novel.characters.forEach(ch => {
+    const card = document.createElement('div');
+    card.className = 'char-card';
+    card.innerHTML = '<h4>' + ch.name + '</h4><p>' + (ch.bio || 'No description yet.') + '</p>';
+    grid.appendChild(card);
+  });
+}
+ 
+/* ---------- Tabs ---------- */
+function switchTab(tab){
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector('[data-tab="' + tab + '"]').classList.add('active');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  if(tab === 'characters') renderCharacters();
+}
+ 
+/* ---------- Init ---------- */
+renderNovelList();
+if(db.novels.length > 0){
+  selectNovel(db.novels[0].id);
+}
+</script>
+ 
+</body>
+</html>
